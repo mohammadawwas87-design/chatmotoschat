@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 const SYSTEM_PROMPT = `
 أنت مساعد ذكي خاص بموقع MotorsSooq.
 تجيب فقط عن السيارات، البيع، الشراء، الأسعار، المواصفات.
-استخدم عناوين ونقاط عند الحاجة.
+استخدم عناوين واضحة ونقاط عند الحاجة.
 لا تذكر أي شركة ذكاء اصطناعي.
 `;
 
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.ZAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -32,8 +32,7 @@ export async function POST(req: Request) {
   const data = await response.json();
 
   return NextResponse.json({
-    reply:
-      data?.choices?.[0]?.message?.content ??
-      'لم أتمكن من توليد رد',
+    reply: data?.choices?.[0]?.message?.content
+      || 'لم أتمكن من توليد رد',
   });
 }
