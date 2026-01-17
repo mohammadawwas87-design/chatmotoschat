@@ -13,41 +13,49 @@ export async function POST(req: Request) {
     const { message } = await req.json();
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
-        reply: '❌ OPENAI_API_KEY غير موجود'
-      }, { status: 500 });
+      return NextResponse.json(
+        { reply: '❌ OPENAI_API_KEY غير موجود على السيرفر' },
+        { status: 500 }
+      );
     }
 
-    const response = await fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: message },
-          ],
-          temperature: 0.4,
-          max_tokens: 300,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    return NextResponse.json({
-      reply: data.choices?.[0]?.message?.content
-        || 'لم أتمكن من توليد رد',
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', // أنسب + أرخص + أقوى من 3.5
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT.trim() },
+          { role: 'user', content: String(message ?? '') },
+        ],
+        temperature: 0.4,
+        max_tokens: 350,
+      }),
     });
 
-  } catch (err: any) {
+    const raw = await resp.text();
+
+    // لو OpenAI رجّع خطأ، نعرضه بدل ما نخبيه
+    if (!resp.ok) {
+      return NextResponse.json(
+        { reply: `❌ OpenAI Error (${resp.status}): ${raw.slice(0, 900)}` },
+        { status: 500 }
+      );
+    }
+
+    const data = JSON.parse(raw);
+    const reply = data?.choices?.[0]?.message?.content;
+
     return NextResponse.json({
-      reply: `❌ خطأ في السيرفر: ${err.message}`
-    }, { status: 500 });
+      reply: reply || '❌ ما وصل محتوى رد من OpenAI',
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { reply: `❌ Server Exception: ${err?.message || String(err)}` },
+      { status: 500 }
+    );
   }
 }
